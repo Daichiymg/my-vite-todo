@@ -1,14 +1,10 @@
 <script setup>
 import { ref } from 'vue';
 const todoRef = ref('');
-// const todoListRef = ref([
-//   { id: 1, task: 'TODO1'},
-//   { id: 2, task: 'TODO2'},
-//   { id: 3, task: 'TODO3'}
-// ]);
 const todoListRef = ref([]);
 const ls = localStorage.todoList;
 todoListRef.value = ls ? JSON.parse(ls) : [];
+
 const addTodo = () => {
   //IDを簡易的にミリ秒で登録
   const id =new Date().getTime();
@@ -17,12 +13,52 @@ const addTodo = () => {
   //登録後は入力欄を空にする
   todoRef.value = '';
 };
+
+const isEditRef = ref(false);//更新ボタンを押したときtrueに
+let editId = -1;
+
+const showTodo = (id) => {
+  //配列(todoListRef.value)から引数のidと同じ要素を検索
+  //findの「(todo)」には配列の要素が引数として順番に入る
+  //「todo.id === id」がtrueならその時点の要素：todoが返る
+  const todo = todoListRef.value.find((todo) => todo.id === id);
+  todoRef.value = todo.task;
+  isEditRef.value = true;
+  editId = id;
+};
+
+const editTodo = () => {
+  //編集対象となるtodoを取得
+  const todo = todoListRef.value.find((todo) => todo.id === editId);
+  //TODOのリストから検索対象のインデックスを取得
+  const idx = todoListRef.value.findIndex((todo) => todo.id === editId);
+  //taskを編集後のTODOで置き換え
+  todo.task = todoRef.value;
+  //splice関数でインデックスを元に対象オブジェクトを置き換え
+  todoListRef.value.splice(idx, 1, todo);
+  localStorage.todoList = JSON.stringify(todoListRef.value)//ローカルストレージに保存
+  isEditRef.value = false;//編集モードを解除
+  editId = -1;//IDを初期値に
+  todoRef.value = '';
+};
+
+const deleteTodo = (id) => {
+  const todo = todoListRef.value.find((todo) => todo.id === id);
+  const idx = todoListRef.value.findIndex((todo) => todo.id === id);
+
+  const delMsg = '「' + todo.task + '」を削除しますか？';
+  if (!confirm(delMsg)) return;
+
+  todoListRef.value.splice(idx, 1);
+  localStorage.todoList = JSON.stringify(todoListRef.value);
+};
 </script>
 
 <template>
   <div class="box_input">
     <input type="text" class="todo_input" v-model="todoRef" placeholder="+ TODOを入力" />
-    <button class="btn" @click="addTodo">追加</button>
+    <button class="btn green" @click="editTodo" v-show="isEditRef">変更</button>
+    <button class="btn" @click="addTodo" v-show="!isEditRef">追加</button>
   </div>
 
   <div class="box_list">
@@ -31,8 +67,8 @@ const addTodo = () => {
         <input type="checkbox" class="check" /><label>{{ todo.task }}</label>
       </div>
       <div class="btns">
-        <button class="btn green">編</button>
-        <button class="btn pink">削</button>
+        <button class="btn green" @click="showTodo(todo.id)">編</button>
+        <button class="btn pink" @click="deleteTodo(todo.id)">削</button>
       </div>
     </div>
   </div>
